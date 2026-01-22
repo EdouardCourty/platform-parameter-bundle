@@ -1,0 +1,3 @@
+easyadmin:
+    resource: routes/
+    type: directory

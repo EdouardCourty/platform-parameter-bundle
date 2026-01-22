@@ -1,0 +1,7 @@
+controllers:
+    resource: ../../Controller/
+    type: attribute
+
+easyadmin:
+    resource: .
+    type: easyadmin.routes

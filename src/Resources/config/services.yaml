@@ -1,0 +1,36 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Ecourty\PlatformParameterBundle\:
+        resource: '../../*'
+        exclude: '../../{Entity,Enum,Exception,EventListener,Resources}'
+
+    Ecourty\PlatformParameterBundle\Contract\PlatformParameterProviderInterface:
+        alias: Ecourty\PlatformParameterBundle\Service\PlatformParameterProvider
+        public: true
+
+    Ecourty\PlatformParameterBundle\Service\PlatformParameterProvider:
+        arguments:
+            $entityClass: '%platform_parameter.entity_class%'
+            $cacheTtl: '%platform_parameter.cache_ttl%'
+            $cacheKeyPrefix: '%platform_parameter.cache_key_prefix%'
+
+    # Commands configuration
+    Ecourty\PlatformParameterBundle\Command\ListCommand:
+        arguments:
+            $entityClass: '%platform_parameter.entity_class%'
+
+    Ecourty\PlatformParameterBundle\Command\GetCommand:
+        arguments:
+            $entityClass: '%platform_parameter.entity_class%'
+
+    Ecourty\PlatformParameterBundle\Command\SetCommand:
+        arguments:
+            $entityClass: '%platform_parameter.entity_class%'
+
+    Ecourty\PlatformParameterBundle\Command\DeleteCommand:
+        arguments:
+            $entityClass: '%platform_parameter.entity_class%'
+

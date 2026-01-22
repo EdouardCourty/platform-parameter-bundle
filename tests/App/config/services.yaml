@@ -1,0 +1,12 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Test dashboard controller
+    Ecourty\PlatformParameterBundle\Tests\App\Controller\:
+        resource: '../Controller/*'
+
+    # In a real Symfony app, this is auto-configured by symfony/twig-pack
+    Twig\Extra\Html\HtmlExtension:
+        tags: ['twig.extension']
