@@ -77,7 +77,7 @@ class PlatformParameterListenerTest extends KernelTestCase
 
         $this->assertCount(1, $this->dispatchedEvents);
         $this->assertInstanceOf(PlatformParameterUpdatedEvent::class, $this->dispatchedEvents[0]);
-        
+
         /** @var PlatformParameterUpdatedEvent $event */
         $event = $this->dispatchedEvents[0];
         $this->assertSame($parameter, $event->getParameter());
@@ -115,7 +115,7 @@ class PlatformParameterListenerTest extends KernelTestCase
         // regardless of clear_cache_on_parameter_update configuration
         // The actual configuration is set to true in test environment,
         // but the listener always dispatches events even if cache clearing is disabled
-        
+
         $parameter = new PlatformParameter();
         $parameter->setKey('test_event_without_cache');
         $parameter->setValue('test_value');
@@ -126,7 +126,7 @@ class PlatformParameterListenerTest extends KernelTestCase
         $this->entityManager->flush();
 
         // Verify event was dispatched
-        $this->assertGreaterThanOrEqual(1, count($this->dispatchedEvents));
+        $this->assertGreaterThanOrEqual(1, \count($this->dispatchedEvents));
         $this->assertInstanceOf(PlatformParameterCreatedEvent::class, $this->dispatchedEvents[0]);
     }
 

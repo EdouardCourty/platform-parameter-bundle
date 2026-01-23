@@ -4,15 +4,10 @@ declare(strict_types=1);
 
 namespace Ecourty\PlatformParameterBundle\Service;
 
-use DateTimeImmutable;
-use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Ecourty\PlatformParameterBundle\Contract\PlatformParameterProviderInterface;
 use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
 use Ecourty\PlatformParameterBundle\Exception\ParameterNotFoundException;
-use Exception;
-use InvalidArgumentException;
-use JsonException;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
@@ -35,26 +30,26 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
     {
         $parameter = $this->fetchParameter($key, $default);
         if (null === $parameter) {
-            assert(null !== $default);
+            \assert(null !== $default);
 
             return $default;
         }
 
-        return trim($parameter->getValue());
+        return \trim($parameter->getValue());
     }
 
     public function getInt(string $key, ?int $default = null): int
     {
         $parameter = $this->fetchParameter($key, $default);
         if (null === $parameter) {
-            assert(null !== $default);
+            \assert(null !== $default);
 
             return $default;
         }
 
         $value = $parameter->getValue();
-        if (!is_numeric($value)) {
-            throw new InvalidArgumentException(sprintf('Parameter "%s" value "%s" is not a valid integer.', $key, $value));
+        if (!\is_numeric($value)) {
+            throw new \InvalidArgumentException(\sprintf('Parameter "%s" value "%s" is not a valid integer.', $key, $value));
         }
 
         return (int) $value;
@@ -64,16 +59,16 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
     {
         $parameter = $this->fetchParameter($key, $default);
         if (null === $parameter) {
-            assert(null !== $default);
+            \assert(null !== $default);
 
             return $default;
         }
 
         $value = $parameter->getValue();
-        $result = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $result = \filter_var($value, \FILTER_VALIDATE_BOOLEAN, \FILTER_NULL_ON_FAILURE);
 
         if (null === $result) {
-            throw new InvalidArgumentException(sprintf('Parameter "%s" value "%s" is not a valid boolean.', $key, $value));
+            throw new \InvalidArgumentException(\sprintf('Parameter "%s" value "%s" is not a valid boolean.', $key, $value));
         }
 
         return $result;
@@ -88,19 +83,19 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
     {
         $parameter = $this->fetchParameter($key, $default);
         if (null === $parameter) {
-            assert(null !== $default);
+            \assert(null !== $default);
 
             return $default;
         }
 
         try {
-            $decoded = json_decode($parameter->getValue(), true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $e) {
-            throw new InvalidArgumentException(sprintf('Parameter "%s" contains invalid JSON: %s', $key, $e->getMessage()), 0, $e);
+            $decoded = \json_decode($parameter->getValue(), true, 512, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new \InvalidArgumentException(\sprintf('Parameter "%s" contains invalid JSON: %s', $key, $e->getMessage()), 0, $e);
         }
 
-        if (!is_array($decoded)) {
-            throw new InvalidArgumentException(sprintf('Parameter "%s" JSON must decode to an array.', $key));
+        if (!\is_array($decoded)) {
+            throw new \InvalidArgumentException(\sprintf('Parameter "%s" JSON must decode to an array.', $key));
         }
 
         return $decoded;
@@ -118,48 +113,48 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
             return $default ?? [];
         }
 
-        assert('' !== $separator, 'Separator cannot be empty');
+        \assert('' !== $separator, 'Separator cannot be empty');
 
-        $lines = explode($separator, $parameter->getValue());
-        $list = array_map('trim', $lines);
+        $lines = \explode($separator, $parameter->getValue());
+        $list = \array_map('trim', $lines);
 
         /* @var string[] */
-        return array_filter($list, fn (string $line) => '' !== $line);
+        return \array_filter($list, fn (string $line) => '' !== $line);
     }
 
     public function getFloat(string $key, ?float $default = null): float
     {
         $parameter = $this->fetchParameter($key, $default);
         if (null === $parameter) {
-            assert(null !== $default);
+            \assert(null !== $default);
 
             return $default;
         }
 
         $value = $parameter->getValue();
-        if (!is_numeric($value)) {
-            throw new InvalidArgumentException(sprintf('Parameter "%s" value "%s" is not a valid float.', $key, $value));
+        if (!\is_numeric($value)) {
+            throw new \InvalidArgumentException(\sprintf('Parameter "%s" value "%s" is not a valid float.', $key, $value));
         }
 
         return (float) $value;
     }
 
-    public function getDateTime(string $key, ?DateTimeImmutable $default = null, ?string $format = null): DateTimeImmutable
+    public function getDateTime(string $key, ?\DateTimeImmutable $default = null, ?string $format = null): \DateTimeImmutable
     {
         $parameter = $this->fetchParameter($key, $default);
         if (null === $parameter) {
-            assert(null !== $default);
+            \assert(null !== $default);
 
             return $default;
         }
 
-        $value = trim($parameter->getValue());
+        $value = \trim($parameter->getValue());
 
         // Try with specific format if provided
         if (null !== $format) {
-            $date = DateTimeImmutable::createFromFormat($format, $value);
+            $date = \DateTimeImmutable::createFromFormat($format, $value);
             if (false === $date) {
-                throw new InvalidArgumentException(sprintf('Parameter "%s" value "%s" cannot be parsed with format "%s".', $key, $value, $format));
+                throw new \InvalidArgumentException(\sprintf('Parameter "%s" value "%s" cannot be parsed with format "%s".', $key, $value, $format));
             }
 
             return $date;
@@ -167,7 +162,7 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
 
         // Try common formats
         $formats = [
-            DateTimeInterface::ATOM,           // ISO 8601: 2005-08-15T15:52:01+00:00
+            \DateTimeInterface::ATOM,           // ISO 8601: 2005-08-15T15:52:01+00:00
             'Y-m-d H:i:s',                      // MySQL datetime: 2005-08-15 15:52:01
             'Y-m-d',                            // Date only: 2005-08-15
             'd/m/Y',                            // French: 15/08/2005
@@ -176,7 +171,7 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
         ];
 
         foreach ($formats as $tryFormat) {
-            $date = DateTimeImmutable::createFromFormat($tryFormat, $value);
+            $date = \DateTimeImmutable::createFromFormat($tryFormat, $value);
             if (false !== $date) {
                 return $date;
             }
@@ -184,9 +179,9 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
 
         // Last resort: try native parser
         try {
-            return new DateTimeImmutable($value);
-        } catch (Exception $e) {
-            throw new InvalidArgumentException(sprintf('Parameter "%s" value "%s" cannot be parsed as datetime.', $key, $value), 0, $e);
+            return new \DateTimeImmutable($value);
+        } catch (\Exception $e) {
+            throw new \InvalidArgumentException(\sprintf('Parameter "%s" value "%s" cannot be parsed as datetime.', $key, $value), 0, $e);
         }
     }
 
@@ -262,6 +257,6 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
 
     private function getCacheKey(string $key): string
     {
-        return sprintf('%s.%s', $this->cacheKeyPrefix, $key);
+        return \sprintf('%s.%s', $this->cacheKeyPrefix, $key);
     }
 }

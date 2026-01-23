@@ -33,7 +33,7 @@ class PlatformParameterListener
         if ($this->clearCacheEnabled) {
             $this->clearParameterCache($entity);
         }
-        
+
         $this->eventDispatcher->dispatch(new PlatformParameterCreatedEvent($entity));
     }
 
@@ -42,10 +42,10 @@ class PlatformParameterListener
         if ($this->clearCacheEnabled) {
             $this->clearParameterCache($entity);
         }
-        
+
         // Get old and new values from UnitOfWork change set
         $changeSet = $args->getObjectManager()->getUnitOfWork()->getEntityChangeSet($entity);
-        
+
         if (isset($changeSet['value']) && \is_array($changeSet['value'])) {
             $oldValue = $changeSet['value'][0];
             $newValue = $changeSet['value'][1];
@@ -55,7 +55,7 @@ class PlatformParameterListener
             // No change to value field, use current value for both
             $oldValue = $newValue = $entity->getValue();
         }
-        
+
         $this->eventDispatcher->dispatch(new PlatformParameterUpdatedEvent(
             $entity,
             $oldValue,
@@ -68,7 +68,7 @@ class PlatformParameterListener
         if ($this->clearCacheEnabled) {
             $this->clearParameterCache($entity);
         }
-        
+
         $this->eventDispatcher->dispatch(new PlatformParameterDeletedEvent($entity));
     }
 

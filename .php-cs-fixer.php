@@ -7,7 +7,9 @@ use PhpCsFixer\Finder;
 
 $finder = Finder::create()
     ->in(__DIR__.'/src')
-    ->in(__DIR__.'/tests')
+    ->in(__DIR__.'/tests/Fixtures')
+    ->in(__DIR__.'/tests/Functional')
+    ->in(__DIR__.'/tests/Unit')
     ->name('*.php');
 
 return (new Config())
@@ -18,12 +20,7 @@ return (new Config())
         'native_function_invocation' => ['include' => ['@all']],
         'no_superfluous_phpdoc_tags' => ['allow_mixed' => true],
         'phpdoc_align' => ['align' => 'left'],
-        'php_unit_method_casing' => ['case' => 'snake_case'],
-        'global_namespace_import' => [
-            'import_classes' => false,
-            'import_constants' => false,
-            'import_functions' => false,
-        ],
+        'php_unit_method_casing' => ['case' => 'camel_case'],
     ])
     ->setRiskyAllowed(true)
     ->setFinder($finder);
