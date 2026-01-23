@@ -17,6 +17,9 @@ jobs:
         php: ['8.3', '8.4']
         symfony: ['6.4.*', '7.4.*', '8.0.*']
         doctrine: ['3.*']
+        exclude:
+          - php: '8.3'
+            doctrine: '3.*'
 
     steps:
       - name: Checkout code
