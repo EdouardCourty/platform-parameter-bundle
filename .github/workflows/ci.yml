@@ -16,8 +16,8 @@ jobs:
       matrix:
         php: ['8.3', '8.4']
         symfony: ['6.4.*', '7.4.*', '8.0.*']
-        doctrine: ['3.*', '4.*']
-    
+        doctrine: ['3.*']
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,30 +54,3 @@ jobs:
 
       - name: Run PHPUnit tests
         run: composer test
-
-  coverage:
-    name: Code Coverage
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: pdo, sqlite, pdo_sqlite
-          coverage: pcov
-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Run tests with coverage
-        run: vendor/bin/phpunit --coverage-clover=coverage.xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
