@@ -44,14 +44,14 @@ final class GetCommand extends Command
         $parameter = $repository->findOneBy(['key' => $key]);
 
         if (null === $parameter) {
-            $io->error(sprintf('Parameter "%s" not found.', $key));
+            $io->error(\sprintf('Parameter "%s" not found.', $key));
 
             return Command::FAILURE;
         }
 
         \assert($parameter instanceof AbstractPlatformParameter);
 
-        $io->title(sprintf('Parameter: %s', $key));
+        $io->title(\sprintf('Parameter: %s', $key));
 
         $io->definitionList(
             ['ID' => (string) $parameter->getId()],

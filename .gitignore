@@ -1,8 +1,12 @@
 /vendor/
 /var/
 /.phpunit.cache/
+.phpunit.result.cache
 /.php-cs-fixer.cache
 /composer.lock
 /tests/App/var/
 .idea
 .DS_Store
+# Test migrations (generated during development)
+tests/Migrations/Version*.php
+tests/App/var/

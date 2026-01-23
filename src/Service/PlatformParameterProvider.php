@@ -16,19 +16,6 @@ use JsonException;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use function array_filter;
-use function array_map;
-use function assert;
-use function explode;
-use function filter_var;
-use function is_array;
-use function is_numeric;
-use function json_decode;
-use function sprintf;
-use function trim;
-use const FILTER_NULL_ON_FAILURE;
-use const FILTER_VALIDATE_BOOLEAN;
-use const JSON_THROW_ON_ERROR;
 
 final class PlatformParameterProvider implements PlatformParameterProviderInterface
 {

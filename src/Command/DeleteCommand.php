@@ -50,7 +50,7 @@ final class DeleteCommand extends Command
         $parameter = $repository->findOneBy(['key' => $key]);
 
         if (null === $parameter) {
-            $io->error(sprintf('Parameter "%s" not found.', $key));
+            $io->error(\sprintf('Parameter "%s" not found.', $key));
 
             return Command::FAILURE;
         }
@@ -80,7 +80,7 @@ final class DeleteCommand extends Command
 
         $this->provider->clearCache($key);
 
-        $io->success(sprintf('Parameter "%s" deleted successfully.', $key));
+        $io->success(\sprintf('Parameter "%s" deleted successfully.', $key));
 
         return Command::SUCCESS;
     }

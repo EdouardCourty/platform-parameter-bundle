@@ -7,6 +7,7 @@ namespace Ecourty\PlatformParameterBundle\Tests\Unit\Entity;
 use Ecourty\PlatformParameterBundle\Entity\PlatformParameter;
 use Ecourty\PlatformParameterBundle\Enum\ParameterType;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 class PlatformParameterTest extends TestCase
 {
@@ -14,7 +15,7 @@ class PlatformParameterTest extends TestCase
     {
         $parameter = new PlatformParameter();
 
-        $this->assertInstanceOf(\Symfony\Component\Uid\Uuid::class, $parameter->getId());
+        $this->assertInstanceOf(Uuid::class, $parameter->getId());
         $this->assertInstanceOf(\DateTimeImmutable::class, $parameter->getCreatedAt());
         $this->assertInstanceOf(\DateTimeImmutable::class, $parameter->getUpdatedAt());
     }

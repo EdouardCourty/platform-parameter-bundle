@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ecourty\PlatformParameterBundle\Tests\App;
 
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
+use Doctrine\Bundle\MigrationsBundle\DoctrineMigrationsBundle;
 use EasyCorp\Bundle\EasyAdminBundle\EasyAdminBundle;
 use Ecourty\PlatformParameterBundle\PlatformParameterBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
@@ -27,6 +28,7 @@ class TestKernel extends Kernel
             new FrameworkBundle(),
             new TwigBundle(),
             new DoctrineBundle(),
+            new DoctrineMigrationsBundle(),
             new SecurityBundle(),
             new TwigComponentBundle(),
             new EasyAdminBundle(),

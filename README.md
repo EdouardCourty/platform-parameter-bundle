@@ -12,6 +12,7 @@ A Symfony bundle for managing global platform parameters with type-safe access a
   - [Register the bundle](#register-the-bundle)
   - [Configuration](#configuration)
   - [Database Setup](#database-setup)
+- [Configuration Reference](#configuration-reference)
 - [Usage](#usage)
   - [Basic Usage](#basic-usage)
   - [Available Methods](#available-methods)
@@ -64,6 +65,8 @@ return [
     Ecourty\PlatformParameterBundle\PlatformParameterBundle::class => ['all' => true],
 ];
 ```
+
+**Important:** The bundle automatically configures Doctrine ORM mappings for the entity class specified in your configuration. **No manual Doctrine mapping configuration is required** - just configure `entity_class` in your bundle settings, and the mapping is handled automatically.
 
 ### Configuration
 
@@ -127,8 +130,49 @@ Run Doctrine migrations to create the `platform_parameter` table:
 ```bash
 # Create a migration
 php bin/console doctrine:migrations:diff
+
+# Apply the migration
 php bin/console doctrine:migrations:migrate
 ```
+
+**Note:** This works seamlessly with custom entities extending `AbstractPlatformParameter`. Doctrine will automatically detect all fields (base + custom) when generating migrations.
+
+## Configuration Reference
+
+All available configuration options with their default values:
+
+```yaml
+platform_parameter:
+    # Entity class to use for storing parameters
+    # Must extend Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter
+    entity_class: 'Ecourty\PlatformParameterBundle\Entity\PlatformParameter'
+
+    # Cache time-to-live in seconds
+    # How long parameters are cached before needing to be refreshed
+    cache_ttl: 3600
+
+    # Prefix for cache keys
+    # All cached parameters will use this prefix (e.g., "platform_parameter.my_key")
+    cache_key_prefix: 'platform_parameter'
+
+    # Automatically clear cache when parameters are created/updated/deleted
+    # Uses a Doctrine listener to automatically invalidate cache on entity changes
+    clear_cache_on_parameter_update: true
+
+    # Custom cache adapter service ID (optional)
+    # If not specified, uses 'platform_parameter.cache' (auto-created) or 'cache.app' as fallback
+    cache_adapter: null
+```
+
+### Configuration Options Details
+
+| Option                            | Type           | Default                                                    | Description                                                                                                                                                          |
+|-----------------------------------|----------------|------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `entity_class`                    | `string`       | `Ecourty\PlatformParameterBundle\Entity\PlatformParameter` | FQCN of the entity class. Must extend `AbstractPlatformParameter`. Allows you to use a custom entity with additional fields.                                         |
+| `cache_ttl`                       | `int`          | `3600`                                                     | Cache TTL in seconds. Controls how long parameters are cached. Set to `0` to disable TTL (cache until manually cleared).                                             |
+| `cache_key_prefix`                | `string`       | `platform_parameter`                                       | Prefix for all cache keys. Useful if you have multiple parameter systems or want to avoid key collisions.                                                            |
+| `clear_cache_on_parameter_update` | `bool`         | `true`                                                     | When enabled, automatically clears parameter cache on entity changes (create/update/delete) via a Doctrine listener. Disable if you prefer manual cache management.  |
+| `cache_adapter`                   | `string\|null` | `null`                                                     | Service ID of a custom cache adapter. If `null`, the bundle automatically uses `platform_parameter.cache` (auto-created TagAware pool) or falls back to `cache.app`. |
 
 ## Usage
 
@@ -221,7 +265,7 @@ $date = $parameterProvider->getDateTime('custom_date', null, 'd-m-Y');
 
 #### Automatic Cache Clearing (Default Behavior)
 
-By default, the bundle **automatically clears the cache** when you create, update, or delete a parameter:
+By default, the bundle **automatically clears the cache** when you create, update, or delete a parameter using a Doctrine entity listener:
 
 ```php
 $parameter = new PlatformParameter();
@@ -235,15 +279,87 @@ $entityManager->flush(); // ✅ Cache is automatically cleared for 'site_name'
 // No need to call $parameterProvider->clearCache('site_name')!
 ```
 
-This is enabled by default via the `clear_cache_on_parameter_update: true` configuration option.
+This is enabled by default via the `clear_cache_on_parameter_update: true` configuration option. The bundle uses a Doctrine listener that automatically wipes the cache for the parameter whenever the entity is persisted, updated, or removed.
 
-**To disable automatic cache clearing:**
+### Reacting to Parameter Changes with Events
+
+The bundle dispatches **Symfony events** whenever parameters are created, updated, or deleted. This provides a simple way to react to parameter changes without configuring Doctrine listeners.
+
+**Available Events:**
+
+```php
+use Ecourty\PlatformParameterBundle\Event\PlatformParameterCreatedEvent;
+use Ecourty\PlatformParameterBundle\Event\PlatformParameterUpdatedEvent;
+use Ecourty\PlatformParameterBundle\Event\PlatformParameterDeletedEvent;
+```
+
+**Example: Send notifications when parameters change**
+
+```php
+// src/EventSubscriber/ParameterChangeSubscriber.php
+namespace App\EventSubscriber;
+
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Ecourty\PlatformParameterBundle\Event\PlatformParameterUpdatedEvent;
+
+class ParameterChangeSubscriber implements EventSubscriberInterface
+{
+    public function __construct(
+        private NotificationService $notifier,
+    ) {
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            PlatformParameterUpdatedEvent::class => 'onParameterUpdated',
+        ];
+    }
+
+    public function onParameterUpdated(PlatformParameterUpdatedEvent $event): void
+    {
+        $parameter = $event->getParameter();
+        
+        // Send notification for critical parameters
+        if ($parameter->getKey() === 'maintenance_mode') {
+            $this->notifier->send(sprintf(
+                'Maintenance mode changed from "%s" to "%s"',
+                $event->getOldValue(),
+                $event->getNewValue()
+            ));
+        }
+    }
+}
+```
+
+**Event Details:**
+
+- **PlatformParameterCreatedEvent**: Contains the newly created parameter entity
+  - `getParameter(): AbstractPlatformParameter`
+
+- **PlatformParameterUpdatedEvent**: Contains the parameter entity, old value, and new value
+  - `getParameter(): AbstractPlatformParameter`
+  - `getOldValue(): string` - The value before the update
+  - `getNewValue(): string` - The value after the update
+
+- **PlatformParameterDeletedEvent**: Contains the parameter entity (before deletion)
+  - `getParameter(): AbstractPlatformParameter`
+
+**Events are always dispatched**, regardless of the `clear_cache_on_parameter_update` configuration. They work with:
+- Console commands (`platform-parameter:set`, `platform-parameter:delete`)
+- Direct Doctrine operations (`$em->persist()`, `$em->flush()`, `$em->remove()`)
+- EasyAdmin CRUD operations
+- Any other method of modifying parameters (as long as Doctrine ORM is used)
+
+**To disable automatic cache clearing (but keep event dispatching):**
 
 ```yaml
 # config/packages/platform_parameter.yaml
 platform_parameter:
-    clear_cache_on_parameter_update: false  # Disable auto-clear
+    clear_cache_on_parameter_update: false  # Disable auto-clear, events still dispatched
 ```
+
+**Note**: Disabling cache clearing means you'll need to manually call `$parameterProvider->clearCache()` or handle cache invalidation via event subscribers.
 
 #### Manual Cache Clearing
 

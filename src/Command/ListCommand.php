@@ -46,8 +46,8 @@ final class ListCommand extends Command
             \assert($parameter instanceof AbstractPlatformParameter);
 
             $value = $parameter->getValue();
-            if (mb_strlen($value) > 50) {
-                $value = mb_substr($value, 0, 47).'...';
+            if (\mb_strlen($value) > 50) {
+                $value = \mb_substr($value, 0, 47).'...';
             }
 
             $rows[] = [
@@ -59,7 +59,7 @@ final class ListCommand extends Command
         }
 
         $io->table(['Key', 'Value', 'Type', 'Label'], $rows);
-        $io->success(sprintf('Found %d parameter(s).', count($parameters)));
+        $io->success(\sprintf('Found %d parameter(s).', \count($parameters)));
 
         return Command::SUCCESS;
     }

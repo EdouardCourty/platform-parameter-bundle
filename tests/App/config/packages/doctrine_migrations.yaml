@@ -1,0 +1,6 @@
+doctrine_migrations:
+    migrations_paths:
+        'Ecourty\PlatformParameterBundle\Tests\App\Migrations': '%kernel.project_dir%/tests/App/migrations'
+    storage:
+        table_storage:
+            table_name: 'doctrine_migration_versions'

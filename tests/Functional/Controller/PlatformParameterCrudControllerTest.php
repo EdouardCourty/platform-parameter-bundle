@@ -140,7 +140,7 @@ class PlatformParameterCrudControllerTest extends WebTestCase
         // EasyAdmin has a delete action button in the detail page
         // Find the delete form and submit it
         $deleteForm = $crawler->filter('form[action*="delete"]')->first();
-        
+
         if ($deleteForm->count() > 0) {
             // Extract and submit the form
             $form = $deleteForm->form();
@@ -224,16 +224,16 @@ class PlatformParameterCrudControllerTest extends WebTestCase
 
     private function getEditUrl(string $entityId): string
     {
-        return '/admin/platform-parameter/' . $entityId . '/edit';
+        return '/admin/platform-parameter/'.$entityId.'/edit';
     }
 
     private function getDetailUrl(string $entityId): string
     {
-        return '/admin/platform-parameter/' . $entityId;
+        return '/admin/platform-parameter/'.$entityId;
     }
 
     private function getDeleteUrl(string $entityId): string
     {
-        return '/admin/platform-parameter/' . $entityId . '/delete';
+        return '/admin/platform-parameter/'.$entityId.'/delete';
     }
 }

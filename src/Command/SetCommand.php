@@ -64,7 +64,7 @@ final class SetCommand extends Command
 
             $this->provider->clearCache($key);
 
-            $io->success(sprintf('Parameter "%s" updated successfully.', $key));
+            $io->success(\sprintf('Parameter "%s" updated successfully.', $key));
 
             return Command::SUCCESS;
         }
@@ -96,7 +96,7 @@ final class SetCommand extends Command
 
         $this->provider->clearCache($key);
 
-        $io->success(sprintf('Parameter "%s" created successfully.', $key));
+        $io->success(\sprintf('Parameter "%s" created successfully.', $key));
 
         return Command::SUCCESS;
     }
@@ -109,7 +109,7 @@ final class SetCommand extends Command
         if (null !== $typeOption) {
             $type = ParameterType::tryFrom($typeOption);
             if (null === $type) {
-                $io->error(sprintf('Invalid type "%s". Valid types: %s', $typeOption, implode(', ', array_column(ParameterType::cases(), 'value'))));
+                $io->error(\sprintf('Invalid type "%s". Valid types: %s', $typeOption, \implode(', ', \array_column(ParameterType::cases(), 'value'))));
 
                 return null;
             }
@@ -118,7 +118,7 @@ final class SetCommand extends Command
         }
 
         if ($input->isInteractive()) {
-            $typeChoices = array_map(fn (ParameterType $t) => $t->value, ParameterType::cases());
+            $typeChoices = \array_map(fn (ParameterType $t) => $t->value, ParameterType::cases());
             /** @var string $typeValue */
             $typeValue = $io->choice('Select parameter type', $typeChoices, 'string');
 

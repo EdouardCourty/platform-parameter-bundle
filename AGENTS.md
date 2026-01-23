@@ -133,6 +133,8 @@ platform_parameter:
     entity_class: 'Ecourty\PlatformParameterBundle\Entity\PlatformParameter'
     cache_ttl: 3600
     cache_key_prefix: 'platform_parameter'
+    clear_cache_on_parameter_update: true  # Auto-clear cache via Doctrine listener
+    cache_adapter: null  # Optional custom cache service
 ```
 
 ---
@@ -164,11 +166,96 @@ $parameter->setType(ParameterType::INTEGER);
 $em->persist($parameter);
 $em->flush();
 
-// ⚠️ IMPORTANT: Clear cache manually
-$provider->clearCache('max_uploads');
+// ✅ Cache is automatically cleared (if clear_cache_on_parameter_update is enabled, which is the default)
+// The bundle uses a Doctrine listener to wipe the cache on entity changes
 ```
 
-**Important**: Manual cache invalidation is required after modifying parameters. The bundle doesn't automatically hook Doctrine events to keep the logic simple and give you explicit control over cache management.
+**By default**, cache is automatically cleared via a Doctrine listener when parameters are created, updated, or deleted. You can disable this behavior by setting `clear_cache_on_parameter_update: false` in configuration if you prefer manual cache management.
+
+### Event System
+
+The bundle dispatches **Symfony events** whenever parameters are created, updated, or deleted. This allows host projects to easily react to parameter changes without configuring Doctrine listeners.
+
+**Available Events**:
+
+1. **PlatformParameterCreatedEvent** - Dispatched after a parameter is created
+2. **PlatformParameterUpdatedEvent** - Dispatched after a parameter is updated (includes old and new values)
+3. **PlatformParameterDeletedEvent** - Dispatched after a parameter is deleted
+
+**Example: React to parameter changes**
+
+```php
+// src/EventSubscriber/ParameterChangeSubscriber.php
+namespace App\EventSubscriber;
+
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Ecourty\PlatformParameterBundle\Event\PlatformParameterUpdatedEvent;
+use Ecourty\PlatformParameterBundle\Event\PlatformParameterCreatedEvent;
+use Ecourty\PlatformParameterBundle\Event\PlatformParameterDeletedEvent;
+
+class ParameterChangeSubscriber implements EventSubscriberInterface
+{
+    public function __construct(
+        private SlackNotifier $slack,
+        private LoggerInterface $logger,
+    ) {
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            PlatformParameterCreatedEvent::class => 'onParameterCreated',
+            PlatformParameterUpdatedEvent::class => 'onParameterUpdated',
+            PlatformParameterDeletedEvent::class => 'onParameterDeleted',
+        ];
+    }
+
+    public function onParameterCreated(PlatformParameterCreatedEvent $event): void
+    {
+        $parameter = $event->getParameter();
+        $this->logger->info('Parameter created', [
+            'key' => $parameter->getKey(),
+            'value' => $parameter->getValue(),
+        ]);
+    }
+
+    public function onParameterUpdated(PlatformParameterUpdatedEvent $event): void
+    {
+        $parameter = $event->getParameter();
+        
+        // Send Slack notification for critical parameters
+        if ($parameter->getKey() === 'maintenance_mode') {
+            $this->slack->send(sprintf(
+                'Maintenance mode changed from "%s" to "%s"',
+                $event->getOldValue(),
+                $event->getNewValue()
+            ));
+        }
+    }
+
+    public function onParameterDeleted(PlatformParameterDeletedEvent $event): void
+    {
+        $parameter = $event->getParameter();
+        $this->logger->warning('Parameter deleted', [
+            'key' => $parameter->getKey(),
+            'last_value' => $parameter->getValue(),
+        ]);
+    }
+}
+```
+
+**Event Details**:
+
+- **PlatformParameterCreatedEvent**: Contains the newly created parameter entity
+- **PlatformParameterUpdatedEvent**: Contains the parameter entity, old value (string), and new value (string)
+- **PlatformParameterDeletedEvent**: Contains the parameter entity (before deletion)
+
+**Events are always dispatched**, regardless of the `clear_cache_on_parameter_update` configuration setting. They work with:
+- Console commands (`platform-parameter:set`, `platform-parameter:delete`)
+- Direct Doctrine operations (`$em->persist()`, `$em->flush()`, `$em->remove()`)
+- EasyAdmin CRUD operations
+
+**Cache Management**: By default, cache is automatically cleared when parameters change. You can disable this behavior by setting `clear_cache_on_parameter_update: false` in configuration, but events will still be dispatched, allowing you to implement custom cache invalidation logic via event subscribers.
 
 ---
 
@@ -655,33 +742,9 @@ php bin/console platform-parameter:cache:clear
 
 ---
 
-### Commands Integration
+## Remarks
 
-All commands are automatically registered via Symfony's service autowiring. No manual registration needed.
-
-**Command naming convention**: `platform-parameter:<action>`
-
-**Return codes**:
-- `0` (Command::SUCCESS): Operation completed successfully
-- `1` (Command::FAILURE): Error occurred (parameter not found, validation failed, etc.)
-
-**Dependencies injected**:
-- `EntityManagerInterface`: For database operations
-- `PlatformParameterProviderInterface`: For cache clearing
-- `$entityClass` parameter: Configured entity class from bundle config
-
----
-
-## 🔮 Future Improvements (Not Implemented)
-
-### Event System
-```php
-// ParameterUpdatedEvent dispatched after flush
-// → Auto-clear cache via EventSubscriber
-// ✅ Now implemented: clear_cache_on_parameter_update configuration option
-```
-
----
+NEVER commit or push the git repository.
 
 ## 📚 References
 

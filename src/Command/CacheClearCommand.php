@@ -38,7 +38,7 @@ final class CacheClearCommand extends Command
         $this->provider->clearCache($key);
 
         if (null !== $key) {
-            $io->success(sprintf('Cache cleared for parameter "%s".', $key));
+            $io->success(\sprintf('Cache cleared for parameter "%s".', $key));
         } else {
             $io->success('All platform parameters cache cleared.');
         }
