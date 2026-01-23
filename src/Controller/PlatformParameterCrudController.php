@@ -57,7 +57,7 @@ class PlatformParameterCrudController extends AbstractCrudController
         yield ChoiceField::new('type')
             ->setFormType(\Symfony\Component\Form\Extension\Core\Type\EnumType::class)
             ->setFormTypeOption('class', ParameterType::class)
-            ->setFormTypeOption('choice_label', fn (ParameterType $type) => $type->getLabel())
+            ->setFormTypeOption('choice_label', static fn (ParameterType $type) => $type->getLabel())
             ->renderAsBadges([
                 ParameterType::STRING->value => 'primary',
                 ParameterType::INTEGER->value => 'info',
@@ -67,7 +67,7 @@ class PlatformParameterCrudController extends AbstractCrudController
             ])
             ->setHelp('Data type of the parameter value')
             ->setDisabled(Crud::PAGE_EDIT === $pageName)
-            ->formatValue(function ($value) {
+            ->formatValue(static function ($value) {
                 if ($value instanceof ParameterType) {
                     return $value->getLabel();
                 }
@@ -81,7 +81,7 @@ class PlatformParameterCrudController extends AbstractCrudController
 
         yield TextField::new('value', 'Value')
             ->onlyOnIndex()
-            ->formatValue(function ($value) {
+            ->formatValue(static function ($value) {
                 $stringValue = (string) $value;
                 if (\mb_strlen($stringValue) > 50) {
                     return \mb_substr($stringValue, 0, 50).'...';

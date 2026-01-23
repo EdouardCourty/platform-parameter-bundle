@@ -119,7 +119,7 @@ final class PlatformParameterProvider implements PlatformParameterProviderInterf
         $list = \array_map('trim', $lines);
 
         /* @var string[] */
-        return \array_filter($list, fn (string $line) => '' !== $line);
+        return \array_filter($list, static fn (string $line) => '' !== $line);
     }
 
     public function getFloat(string $key, ?float $default = null): float

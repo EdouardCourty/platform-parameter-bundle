@@ -118,7 +118,7 @@ final class SetCommand extends Command
         }
 
         if ($input->isInteractive()) {
-            $typeChoices = \array_map(fn (ParameterType $t) => $t->value, ParameterType::cases());
+            $typeChoices = \array_map(static fn (ParameterType $t) => $t->value, ParameterType::cases());
             /** @var string $typeValue */
             $typeValue = $io->choice('Select parameter type', $typeChoices, 'string');
 

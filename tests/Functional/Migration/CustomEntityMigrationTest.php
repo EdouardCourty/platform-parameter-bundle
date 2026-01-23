@@ -54,7 +54,7 @@ class CustomEntityMigrationTest extends KernelTestCase
 
         $schemaManager = $this->connection->createSchemaManager();
         $columns = $schemaManager->listTableColumns('custom_platform_parameter');
-        $columnNames = \array_map(fn ($col) => \trim(\strtolower($col), '"'), \array_keys($columns));
+        $columnNames = \array_map(static fn ($col) => \trim(\strtolower($col), '"'), \array_keys($columns));
 
         // Base columns from AbstractPlatformParameter
         $baseColumns = ['id', 'key', 'value', 'type', 'label', 'description', 'created_at', 'updated_at'];
