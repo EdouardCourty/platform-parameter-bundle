@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Ecourty\PlatformParameterBundle\DependencyInjection;
 
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
+use Ecourty\PlatformParameterBundle\Entity\PlatformParameter;
 use Ecourty\PlatformParameterBundle\EventListener\PlatformParameterListener;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
+use Ecourty\PlatformParameterBundle\Service\PlatformParameterProvider;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
@@ -16,6 +20,9 @@ use Symfony\Component\DependencyInjection\Reference;
 
 final class PlatformParameterExtension extends Extension implements PrependExtensionInterface
 {
+    private const string DEFAULT_CACHE_POOL_SERVICE_ID = 'platform_parameter.cache';
+    private const string DEFAULT_CACHE_POOL_INNER_SERVICE_ID = 'platform_parameter.cache.inner';
+
     public function prepend(ContainerBuilder $container): void
     {
         // Get bundle configuration to determine entity class
@@ -63,11 +70,14 @@ final class PlatformParameterExtension extends Extension implements PrependExten
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yaml');
 
-        // Create default TagAware cache pool if not already defined
-        $this->registerDefaultCachePool($container);
+        // Create default TagAware cache pool
+        $this->registerDefaultCachePool($container, $cacheTtl);
 
         // Resolve cache adapter with fallback logic
         $resolvedCacheAdapter = $this->resolveCacheAdapter($container, $cacheAdapter);
+
+        // Configure PlatformParameterProvider with explicit cache injection
+        $this->configurePlatformParameterProvider($container, $entityClass, $resolvedCacheAdapter, $cacheTtl, $cacheKeyPrefix);
 
         // Always register the listener (for events), pass clearCacheOnUpdate flag
         $this->registerParameterListener($container, $cacheKeyPrefix, $resolvedCacheAdapter, $clearCacheOnUpdate);
@@ -80,57 +90,123 @@ final class PlatformParameterExtension extends Extension implements PrependExten
      */
     private function configureDoctrine(ContainerBuilder $container, string $entityClass): void
     {
-        // Determine the directory and namespace based on entity class
-        $reflectionClass = new \ReflectionClass($entityClass);
-        $fileName = $reflectionClass->getFileName();
+        $defaultEntityClass = PlatformParameter::class;
 
-        if (false === $fileName) {
-            throw new \RuntimeException(\sprintf('Cannot determine file path for entity class "%s"', $entityClass));
-        }
-
-        $entityDir = \dirname($fileName);
-        $entityNamespace = $reflectionClass->getNamespaceName();
-
-        // Configure Doctrine mapping
-        $doctrineConfig = [
-            'mappings' => [
-                'PlatformParameterBundle' => [
-                    'type' => 'attribute',
-                    'dir' => $entityDir,
-                    'prefix' => $entityNamespace,
-                    'alias' => 'PlatformParameterBundle',
-                    'is_bundle' => false,
+        // Always map Model/ directory so AbstractPlatformParameter (MappedSuperclass) is discoverable
+        $bundleModelDir = \dirname(__DIR__).'/Model';
+        $container->prependExtensionConfig('doctrine', [
+            'orm' => [
+                'mappings' => [
+                    'PlatformParameterBundleModel' => [
+                        'type' => 'attribute',
+                        'dir' => $bundleModelDir,
+                        'prefix' => 'Ecourty\PlatformParameterBundle\Model',
+                        'alias' => 'PlatformParameterBundleModel',
+                        'is_bundle' => false,
+                    ],
                 ],
             ],
-        ];
+        ]);
 
-        $container->prependExtensionConfig('doctrine', ['orm' => $doctrineConfig]);
-    }
+        // If using custom entity, map only the custom entity directory
+        if ($entityClass !== $defaultEntityClass) {
+            $reflectionClass = new \ReflectionClass($entityClass);
+            $fileName = $reflectionClass->getFileName();
 
-    /**
-     * Register a default TagAware cache pool for optimal performance.
-     */
-    private function registerDefaultCachePool(ContainerBuilder $container): void
-    {
-        // Only create if not already defined by the user
-        if ($container->hasDefinition('platform_parameter.cache')) {
+            if (false === $fileName) {
+                throw new \RuntimeException(\sprintf('Cannot determine file path for entity class "%s"', $entityClass));
+            }
+
+            $entityDir = \dirname($fileName);
+            $entityNamespace = $reflectionClass->getNamespaceName();
+
+            $container->prependExtensionConfig('doctrine', [
+                'orm' => [
+                    'mappings' => [
+                        'PlatformParameterBundle' => [
+                            'type' => 'attribute',
+                            'dir' => $entityDir,
+                            'prefix' => $entityNamespace,
+                            'alias' => 'PlatformParameterBundle',
+                            'is_bundle' => false,
+                        ],
+                    ],
+                ],
+            ]);
+
             return;
         }
 
-        // Create a TagAware cache adapter wrapping the default app cache
-        // TagAwareAdapter constructor signature: __construct(AdapterInterface $itemsPool, TagAwareAdapterInterface $tagsPool = null)
-        $container->register('platform_parameter.cache', TagAwareAdapter::class)
-            ->setArguments([
-                new Reference('cache.app'), // itemsPool
-                null, // tagsPool (null = same as itemsPool)
-            ]);
+        // Using default entity: map the bundle's Entity directory
+        $bundleEntityDir = \dirname(__DIR__).'/Entity';
+
+        $container->prependExtensionConfig('doctrine', [
+            'orm' => [
+                'mappings' => [
+                    'PlatformParameterBundle' => [
+                        'type' => 'attribute',
+                        'dir' => $bundleEntityDir,
+                        'prefix' => 'Ecourty\PlatformParameterBundle\Entity',
+                        'alias' => 'PlatformParameterBundle',
+                        'is_bundle' => false,
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Register default TagAware cache pool for optimal performance.
+     * Creates a filesystem-based TagAwareAdapter if not already defined by the user.
+     */
+    private function registerDefaultCachePool(ContainerBuilder $container, int $cacheTtl): void
+    {
+        // Only create if not already defined by the user
+        if ($container->hasDefinition(self::DEFAULT_CACHE_POOL_SERVICE_ID)) {
+            return;
+        }
+
+        // Create inner FilesystemAdapter
+        $innerDefinition = new Definition(FilesystemAdapter::class);
+        $innerDefinition->setArguments([
+            'platform_parameter',  // namespace
+            $cacheTtl,            // default lifetime
+            '%kernel.cache_dir%/pools/platform_parameter', // directory
+        ]);
+        $innerDefinition->setPublic(false);
+        $container->setDefinition(self::DEFAULT_CACHE_POOL_INNER_SERVICE_ID, $innerDefinition);
+
+        // Create TagAwareAdapter wrapper
+        $cacheDefinition = new Definition(TagAwareAdapter::class);
+        $cacheDefinition->setArguments([
+            new Reference(self::DEFAULT_CACHE_POOL_INNER_SERVICE_ID),
+        ]);
+        $cacheDefinition->setPublic(false);
+        $container->setDefinition(self::DEFAULT_CACHE_POOL_SERVICE_ID, $cacheDefinition);
+    }
+
+    /**
+     * Configure PlatformParameterProvider with explicit cache injection.
+     * This ensures the correct cache adapter is used instead of relying on autowiring.
+     */
+    private function configurePlatformParameterProvider(
+        ContainerBuilder $container,
+        string $entityClass,
+        string $cacheAdapter,
+        int $cacheTtl,
+        string $cacheKeyPrefix,
+    ): void {
+        $definition = $container->getDefinition(PlatformParameterProvider::class);
+        $definition->setArgument('$cache', new Reference($cacheAdapter));
+        $definition->setArgument('$entityClass', $entityClass);
+        $definition->setArgument('$cacheTtl', $cacheTtl);
+        $definition->setArgument('$cacheKeyPrefix', $cacheKeyPrefix);
     }
 
     /**
      * Resolve cache adapter with fallback logic:
      * 1. Use custom cache_adapter if provided
      * 2. Else use platform_parameter.cache (auto-created TagAware adapter)
-     * 3. Else use cache.app as fallback
      */
     private function resolveCacheAdapter(ContainerBuilder $container, ?string $cacheAdapter): string
     {
@@ -143,13 +219,8 @@ final class PlatformParameterExtension extends Extension implements PrependExten
             return $cacheAdapter;
         }
 
-        // 2. Use platform_parameter.cache (should always exist now due to registerDefaultCachePool)
-        if ($container->has('platform_parameter.cache') || $container->hasDefinition('platform_parameter.cache')) {
-            return 'platform_parameter.cache';
-        }
-
-        // 3. Fallback to cache.app (should rarely happen)
-        return 'cache.app';
+        // 2. Use platform_parameter.cache (created by registerDefaultCachePool)
+        return self::DEFAULT_CACHE_POOL_SERVICE_ID;
     }
 
     /**

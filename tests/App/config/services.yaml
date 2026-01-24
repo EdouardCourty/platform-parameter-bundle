@@ -7,6 +7,10 @@ services:
     Ecourty\PlatformParameterBundle\Tests\App\Controller\:
         resource: '../Controller/*'
 
+    # Register the CRUD controller for tests (excluded from bundle auto-config)
+    Ecourty\PlatformParameterBundle\Controller\PlatformParameterCrudController:
+        tags: ['controller.service_arguments']
+
     # In a real Symfony app, this is auto-configured by symfony/twig-pack
     Twig\Extra\Html\HtmlExtension:
         tags: ['twig.extension']

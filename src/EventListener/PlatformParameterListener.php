@@ -7,10 +7,10 @@ namespace Ecourty\PlatformParameterBundle\EventListener;
 use Doctrine\ORM\Event\PostPersistEventArgs;
 use Doctrine\ORM\Event\PostRemoveEventArgs;
 use Doctrine\ORM\Event\PostUpdateEventArgs;
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
 use Ecourty\PlatformParameterBundle\Event\PlatformParameterCreatedEvent;
 use Ecourty\PlatformParameterBundle\Event\PlatformParameterDeletedEvent;
 use Ecourty\PlatformParameterBundle\Event\PlatformParameterUpdatedEvent;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 

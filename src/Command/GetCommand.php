@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Ecourty\PlatformParameterBundle\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -54,7 +54,7 @@ final class GetCommand extends Command
         $io->title(\sprintf('Parameter: %s', $key));
 
         $io->definitionList(
-            ['ID' => (string) $parameter->getId()],
+            ['ID' => (string) $parameter->getId()], // @phpstan-ignore-line
             ['Key' => $parameter->getKey()],
             ['Value' => $parameter->getValue()],
             ['Type' => $parameter->getType()->value],

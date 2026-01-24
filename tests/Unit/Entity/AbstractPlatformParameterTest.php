@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Ecourty\PlatformParameterBundle\Tests\Unit\Entity;
 
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
 use Ecourty\PlatformParameterBundle\Enum\ParameterType;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 use PHPUnit\Framework\TestCase;
 
 final class AbstractPlatformParameterTest extends TestCase
@@ -97,6 +97,12 @@ final class AbstractPlatformParameterTest extends TestCase
     private function createParameter(): AbstractPlatformParameter
     {
         return new class extends AbstractPlatformParameter {
+            private int $id = 1;
+
+            public function getId(): int
+            {
+                return $this->id;
+            }
         };
     }
 }
