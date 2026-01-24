@@ -144,8 +144,8 @@ All available configuration options with their default values:
 ```yaml
 platform_parameter:
     # Entity class to use for storing parameters
-    # Must extend Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter
-    entity_class: 'Ecourty\PlatformParameterBundle\Entity\PlatformParameter'
+    # Must extend Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter
+    entity_class: 'Ecourty\PlatformParameterBundle\Model\PlatformParameter'
 
     # Cache time-to-live in seconds
     # How long parameters are cached before needing to be refreshed
@@ -584,7 +584,7 @@ The bundle is designed to be extensible. You can create your own entity that ext
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'platform_parameter')]

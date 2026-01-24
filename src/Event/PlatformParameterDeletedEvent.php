@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Ecourty\PlatformParameterBundle\Event;
 
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 
 /**
  * Event dispatched when a platform parameter is deleted.

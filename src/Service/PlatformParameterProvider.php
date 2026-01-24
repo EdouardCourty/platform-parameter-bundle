@@ -6,8 +6,8 @@ namespace Ecourty\PlatformParameterBundle\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Ecourty\PlatformParameterBundle\Contract\PlatformParameterProviderInterface;
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
 use Ecourty\PlatformParameterBundle\Exception\ParameterNotFoundException;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;

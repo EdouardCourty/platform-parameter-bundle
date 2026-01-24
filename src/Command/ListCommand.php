@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Ecourty\PlatformParameterBundle\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Ecourty\PlatformParameterBundle\Entity\AbstractPlatformParameter;
+use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;

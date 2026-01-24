@@ -5,17 +5,14 @@ services:
 
     Ecourty\PlatformParameterBundle\:
         resource: '../../*'
-        exclude: '../../{Entity,Enum,Exception,EventListener,Resources}'
+        exclude: '../../{Controller,Entity,Enum,Exception,EventListener,Resources}'
 
     Ecourty\PlatformParameterBundle\Contract\PlatformParameterProviderInterface:
         alias: Ecourty\PlatformParameterBundle\Service\PlatformParameterProvider
         public: true
 
-    Ecourty\PlatformParameterBundle\Service\PlatformParameterProvider:
-        arguments:
-            $entityClass: '%platform_parameter.entity_class%'
-            $cacheTtl: '%platform_parameter.cache_ttl%'
-            $cacheKeyPrefix: '%platform_parameter.cache_key_prefix%'
+    # Note: PlatformParameterProvider is configured programmatically in PlatformParameterExtension
+    # to inject the correct cache adapter with dynamic configuration
 
     # Commands configuration
     Ecourty\PlatformParameterBundle\Command\ListCommand:

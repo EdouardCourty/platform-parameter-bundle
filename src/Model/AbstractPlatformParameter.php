@@ -2,22 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Ecourty\PlatformParameterBundle\Entity;
+namespace Ecourty\PlatformParameterBundle\Model;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Ecourty\PlatformParameterBundle\Enum\ParameterType;
-use Symfony\Bridge\Doctrine\Types\UuidType;
-use Symfony\Component\Uid\Uuid;
 
 #[ORM\MappedSuperclass]
 #[ORM\HasLifecycleCallbacks]
 abstract class AbstractPlatformParameter
 {
-    #[ORM\Id]
-    #[ORM\Column(type: UuidType::NAME, unique: true)]
-    private Uuid $id;
-
     #[ORM\Column(type: Types::STRING, length: 255, unique: true)]
     private string $key;
 
@@ -41,15 +35,11 @@ abstract class AbstractPlatformParameter
 
     public function __construct()
     {
-        $this->id = Uuid::v4();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
     }
 
-    public function getId(): Uuid
-    {
-        return $this->id;
-    }
+    abstract public function getId(): mixed;
 
     public function getKey(): string
     {
