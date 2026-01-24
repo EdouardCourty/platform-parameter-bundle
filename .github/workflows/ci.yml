@@ -60,6 +60,7 @@ jobs:
             "symfony/validator:${{ matrix.symfony }}" \
             "symfony/yaml:${{ matrix.symfony }}" \
             "symfony/asset:${{ matrix.symfony }}" \
+            "symfony/form:${{ matrix.symfony }}" \
             --no-update --no-interaction
           composer update --prefer-dist --no-interaction --no-progress
 
