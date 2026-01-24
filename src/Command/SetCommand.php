@@ -5,20 +5,20 @@ declare(strict_types=1);
 namespace Ecourty\PlatformParameterBundle\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Ecourty\PlatformParameterBundle\Contract\PlatformParameterProviderInterface;
+use Ecourty\PlatformParameterBundle\Contract\PlatformParameterWriterInterface;
 use Ecourty\PlatformParameterBundle\Enum\ParameterType;
+use Ecourty\PlatformParameterBundle\Exception\ParameterNotFoundException;
 use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'platform-parameter:set',
-    description: 'Create or update a platform parameter',
+    description: 'Update an existing platform parameter',
 )]
 final class SetCommand extends Command
 {
@@ -27,7 +27,7 @@ final class SetCommand extends Command
      */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly PlatformParameterProviderInterface $provider,
+        private readonly PlatformParameterWriterInterface $writer,
         private readonly string $entityClass,
     ) {
         parent::__construct();
@@ -38,9 +38,6 @@ final class SetCommand extends Command
         $this
             ->addArgument('key', InputArgument::REQUIRED, 'The parameter key')
             ->addArgument('value', InputArgument::REQUIRED, 'The parameter value')
-            ->addOption('type', null, InputOption::VALUE_REQUIRED, 'Parameter type (for creation)')
-            ->addOption('label', null, InputOption::VALUE_REQUIRED, 'Parameter label (for creation)')
-            ->addOption('description', null, InputOption::VALUE_REQUIRED, 'Parameter description (for creation)')
         ;
     }
 
@@ -52,121 +49,41 @@ final class SetCommand extends Command
         /** @var string $value */
         $value = $input->getArgument('value');
 
-        $repository = $this->entityManager->getRepository($this->entityClass);
-        $parameter = $repository->findOneBy(['key' => $key]);
+        try {
+            // Get existing parameter to determine its type
+            $repository = $this->entityManager->getRepository($this->entityClass);
+            $parameter = $repository->findOneBy(['key' => $key]);
 
-        if (null !== $parameter) {
+            if (null === $parameter) {
+                $io->error(\sprintf('Parameter "%s" not found. Use Doctrine entities to create new parameters.', $key));
+
+                return Command::FAILURE;
+            }
+
             \assert($parameter instanceof AbstractPlatformParameter);
 
-            // Update existing parameter
-            $parameter->setValue($value);
-            $this->entityManager->flush();
-
-            $this->provider->clearCache($key);
+            // Use Writer method based on type
+            match ($parameter->getType()) {
+                ParameterType::STRING => $this->writer->setString($key, $value),
+                ParameterType::INTEGER => $this->writer->setInt($key, (int) $value),
+                ParameterType::BOOLEAN => $this->writer->setBool($key, \filter_var($value, \FILTER_VALIDATE_BOOLEAN)),
+                ParameterType::JSON => $this->writer->setJson($key, (array) \json_decode($value, true, 512, \JSON_THROW_ON_ERROR)),
+                ParameterType::LIST => $this->writer->setList($key, \explode("\n", $value)),
+                ParameterType::FLOAT => $this->writer->setFloat($key, (float) $value),
+                ParameterType::DATETIME => $this->writer->setDateTime($key, new \DateTimeImmutable($value)),
+            };
 
             $io->success(\sprintf('Parameter "%s" updated successfully.', $key));
 
             return Command::SUCCESS;
-        }
+        } catch (ParameterNotFoundException $e) {
+            $io->error($e->getMessage());
 
-        // Create new parameter
-        $type = $this->getType($input, $io);
-        if (null === $type) {
+            return Command::FAILURE;
+        } catch (\Exception $e) {
+            $io->error(\sprintf('Failed to update parameter: %s', $e->getMessage()));
+
             return Command::FAILURE;
         }
-
-        $label = $this->getLabel($input, $io);
-        if (null === $label) {
-            return Command::FAILURE;
-        }
-
-        $description = $this->getParameterDescription($input, $io);
-
-        $parameter = new ($this->entityClass)();
-        \assert($parameter instanceof AbstractPlatformParameter);
-
-        $parameter->setKey($key);
-        $parameter->setValue($value);
-        $parameter->setType($type);
-        $parameter->setLabel($label);
-        $parameter->setDescription($description);
-
-        $this->entityManager->persist($parameter);
-        $this->entityManager->flush();
-
-        $this->provider->clearCache($key);
-
-        $io->success(\sprintf('Parameter "%s" created successfully.', $key));
-
-        return Command::SUCCESS;
-    }
-
-    private function getType(InputInterface $input, SymfonyStyle $io): ?ParameterType
-    {
-        /** @var string|null $typeOption */
-        $typeOption = $input->getOption('type');
-
-        if (null !== $typeOption) {
-            $type = ParameterType::tryFrom($typeOption);
-            if (null === $type) {
-                $io->error(\sprintf('Invalid type "%s". Valid types: %s', $typeOption, \implode(', ', \array_column(ParameterType::cases(), 'value'))));
-
-                return null;
-            }
-
-            return $type;
-        }
-
-        if ($input->isInteractive()) {
-            $typeChoices = \array_map(static fn (ParameterType $t) => $t->value, ParameterType::cases());
-            /** @var string $typeValue */
-            $typeValue = $io->choice('Select parameter type', $typeChoices, 'string');
-
-            return ParameterType::from($typeValue);
-        }
-
-        $io->error('--type option is required in non-interactive mode.');
-
-        return null;
-    }
-
-    private function getLabel(InputInterface $input, SymfonyStyle $io): ?string
-    {
-        /** @var string|null $label */
-        $label = $input->getOption('label');
-
-        if (null !== $label) {
-            return $label;
-        }
-
-        if ($input->isInteractive()) {
-            /** @var string|null $result */
-            $result = $io->ask('Enter parameter label');
-
-            return $result;
-        }
-
-        $io->error('--label option is required in non-interactive mode.');
-
-        return null;
-    }
-
-    private function getParameterDescription(InputInterface $input, SymfonyStyle $io): ?string
-    {
-        /** @var string|null $description */
-        $description = $input->getOption('description');
-
-        if (null !== $description) {
-            return $description;
-        }
-
-        if ($input->isInteractive()) {
-            /** @var string|null $result */
-            $result = $io->ask('Enter parameter description (optional)', null);
-
-            return $result;
-        }
-
-        return null;
     }
 }

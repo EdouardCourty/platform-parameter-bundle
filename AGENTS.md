@@ -108,7 +108,7 @@ interface PlatformParameterProviderInterface
 
 **Design Pattern**: Interface injection for testability and decoupling
 
-#### 5. **PlatformParameterProvider** (Service)
+#### 5. **PlatformParameterProvider** (Service - READ)
 Provider implementation with business logic:
 
 **Responsibilities**:
@@ -126,7 +126,42 @@ When a parameter is requested, the provider follows this sequence:
 4. **Database Result**: If found in DB, store it in cache and return the value
 5. **Not Found**: If the parameter doesn't exist, either return the provided default value or throw a `ParameterNotFoundException`
 
-#### 6. **Symfony Configuration**
+#### 6. **PlatformParameterWriter** (Service - WRITE)
+Writer service for updating parameter values from code:
+
+**Responsibilities**:
+- Update existing parameter values with type safety
+- Delete parameters by key
+- Type validation (must match parameter's declared type)
+- Value conversion (PHP type → string for database)
+- Exception handling (not found or type mismatch)
+
+**Available Methods**:
+```php
+interface PlatformParameterWriterInterface
+{
+    public function setString(string $key, string $value): void;
+    public function setInt(string $key, int $value): void;
+    public function setBool(string $key, bool $value): void;
+    public function setJson(string $key, array $value): void;
+    public function setList(string $key, array $value, string $separator = "\n"): void;
+    public function setFloat(string $key, float $value): void;
+    public function setDateTime(string $key, \DateTimeImmutable $value, ?string $format = null): void;
+    public function delete(string $key): void;
+}
+```
+
+**Behavior**:
+- All `set*()` methods throw `ParameterNotFoundException` if the parameter doesn't exist
+- All `set*()` methods throw `ParameterTypeMismatchException` if the parameter type doesn't match the method type
+- `delete()` method throws `ParameterNotFoundException` if the parameter doesn't exist
+- Cache clearing is automatic via Doctrine listener
+- Events (`PlatformParameterUpdatedEvent`, `PlatformParameterDeletedEvent`) are dispatched automatically
+- **No auto-creation**: Writer only updates existing parameters (creation must be done via Doctrine entities)
+
+**Design Principle**: CQRS-style separation: Provider = READ, Writer = WRITE
+
+#### 7. **Symfony Configuration**
 ```yaml
 # config/packages/platform_parameter.yaml
 platform_parameter:
@@ -152,9 +187,45 @@ When reading a parameter, for example `$provider->getInt('max_uploads', 10)`, th
 5. **Database Hit**: If found in the database, the parameter is cached for future requests and the value is returned
 6. **Database Miss**: If not found in the database, the default value (10) is returned, or a `ParameterNotFoundException` is thrown if no default was provided
 
-### Writing/Updating
+### Writing/Updating Parameters
 
-To create or update a parameter, you work directly with Doctrine entities:
+#### Method 1: PlatformParameterWriter (Recommended for Updates)
+
+The bundle provides a **PlatformParameterWriter** service for type-safe parameter updates from code:
+
+```php
+// In a service or controller
+public function __construct(
+    private PlatformParameterWriterInterface $writer,
+) {
+}
+
+public function updateParameter(): void
+{
+    // Update existing parameters with type-safe methods
+    $this->writer->setInt('max_uploads', 100);
+    $this->writer->setBool('maintenance_mode', true);
+    $this->writer->setString('site_name', 'My Site');
+    $this->writer->setJson('config', ['key' => 'value']);
+    $this->writer->setList('emails', ['a@example.com', 'b@example.com']);
+    $this->writer->setFloat('rate', 3.14);
+    $this->writer->setDateTime('last_sync', new \DateTimeImmutable());
+    
+    // Delete a parameter
+    $this->writer->delete('old_parameter');
+    
+    // ✅ Cache is automatically cleared
+    // ✅ Events are automatically dispatched
+}
+```
+
+**Important**: The Writer can only **update existing parameters**. It throws `ParameterNotFoundException` if the parameter doesn't exist, and `ParameterTypeMismatchException` if you try to set a value with the wrong type (e.g., calling `setInt()` on a STRING parameter).
+
+**Why no auto-creation?** Because if you extend `AbstractPlatformParameter` with custom fields (category, icon, etc.), the Writer doesn't know how to populate those fields. Parameter creation must be done explicitly via Doctrine entities.
+
+#### Method 2: Direct Doctrine Entity Manipulation (For Creation)
+
+To **create** a parameter, you must work directly with Doctrine entities:
 
 ```php
 // In a service or controller
@@ -162,12 +233,14 @@ $parameter = new PlatformParameter();
 $parameter->setKey('max_uploads');
 $parameter->setValue('20');
 $parameter->setType(ParameterType::INTEGER);
+$parameter->setLabel('Maximum Uploads');
+$parameter->setDescription('Maximum number of files per upload');
 
 $em->persist($parameter);
 $em->flush();
 
 // ✅ Cache is automatically cleared (if clear_cache_on_parameter_update is enabled, which is the default)
-// The bundle uses a Doctrine listener to wipe the cache on entity changes
+// ✅ Events are automatically dispatched via Doctrine listener
 ```
 
 **By default**, cache is automatically cleared via a Doctrine listener when parameters are created, updated, or deleted. You can disable this behavior by setting `clear_cache_on_parameter_update: false` in configuration if you prefer manual cache management.
@@ -606,68 +679,45 @@ php bin/console platform-parameter:get site_name
 
 ---
 
-### 3. Create or update a parameter
+### 3. Update a parameter value
 
 ```bash
-php bin/console platform-parameter:set <key> <value> [options]
+php bin/console platform-parameter:set <key> <value>
 ```
 
 **Arguments**:
-- `key` (required): The parameter key
-- `value` (required): The parameter value
-
-**Options**:
-- `--type`: Parameter type (required for creation in non-interactive mode)
-- `--label`: Parameter label (required for creation in non-interactive mode)
-- `--description`: Parameter description (optional)
+- `key` (required): The parameter key (must exist)
+- `value` (required): The new parameter value
 
 **Behavior**:
-
-**If parameter exists**:
-- Updates only the value
-- Other metadata (type, label, description) remain unchanged
+- Updates the value of an existing parameter
+- Automatically detects parameter type and converts value accordingly
 - Cache is automatically cleared
-
-**If parameter doesn't exist**:
-
-*Interactive mode (default)*:
-- Prompts for type (choice from: string, integer, boolean, json, list, float, datetime)
-- Prompts for label (text input)
-- Prompts for description (optional, press Enter to skip)
-
-*Non-interactive mode (`--no-interaction`)*:
-- Requires `--type` and `--label` options
-- `--description` is optional
-- Returns error if required options are missing
+- Events are automatically dispatched
+- Returns error if parameter doesn't exist
 
 **Examples**:
 
 ```bash
-# Update existing parameter
+# Update integer parameter
 php bin/console platform-parameter:set max_uploads 50
 
-# Create new parameter (interactive mode)
-php bin/console platform-parameter:set new_feature_flag true
-# → Will ask: type? label? description?
+# Update boolean parameter
+php bin/console platform-parameter:set maintenance_mode true
 
-# Create new parameter (non-interactive mode)
-php bin/console platform-parameter:set api_timeout 30 \
-    --type=integer \
-    --label="API Timeout" \
-    --description="Timeout in seconds for API calls" \
-    --no-interaction
+# Update string parameter
+php bin/console platform-parameter:set site_name "My New Site"
 
-# Create boolean parameter
-php bin/console platform-parameter:set maintenance_mode false \
-    --type=boolean \
-    --label="Maintenance Mode" \
-    --no-interaction
+# Update JSON parameter
+php bin/console platform-parameter:set config '{"key":"value"}'
 ```
 
 **Use case**: 
 - Quickly modify parameter values in scripts or deployments
-- Seed initial parameters during installation
 - Update configuration without accessing database or EasyAdmin
+- CI/CD pipeline parameter updates
+
+**Note**: To create new parameters, use Doctrine entities directly (see "Writing/Updating Parameters" section).
 
 ---
 

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Ecourty\PlatformParameterBundle\DependencyInjection;
 
+use Ecourty\PlatformParameterBundle\Contract\PlatformParameterProviderInterface;
+use Ecourty\PlatformParameterBundle\Contract\PlatformParameterWriterInterface;
 use Ecourty\PlatformParameterBundle\Entity\PlatformParameter;
 use Ecourty\PlatformParameterBundle\EventListener\PlatformParameterListener;
 use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
-use Ecourty\PlatformParameterBundle\Service\PlatformParameterProvider;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Config\FileLocator;
@@ -15,7 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
-use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
 final class PlatformParameterExtension extends Extension implements PrependExtensionInterface
@@ -67,8 +68,8 @@ final class PlatformParameterExtension extends Extension implements PrependExten
         $container->setParameter('platform_parameter.cache_key_prefix', $cacheKeyPrefix);
         $container->setParameter('platform_parameter.clear_cache_on_parameter_update', $clearCacheOnUpdate);
 
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
-        $loader->load('services.yaml');
+        $loader = new PhpFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $loader->load('services.php');
 
         // Create default TagAware cache pool
         $this->registerDefaultCachePool($container, $cacheTtl);
@@ -78,6 +79,9 @@ final class PlatformParameterExtension extends Extension implements PrependExten
 
         // Configure PlatformParameterProvider with explicit cache injection
         $this->configurePlatformParameterProvider($container, $entityClass, $resolvedCacheAdapter, $cacheTtl, $cacheKeyPrefix);
+
+        // Configure PlatformParameterWriter with entity class
+        $this->configurePlatformParameterWriter($container, $entityClass);
 
         // Always register the listener (for events), pass clearCacheOnUpdate flag
         $this->registerParameterListener($container, $cacheKeyPrefix, $resolvedCacheAdapter, $clearCacheOnUpdate);
@@ -196,11 +200,22 @@ final class PlatformParameterExtension extends Extension implements PrependExten
         int $cacheTtl,
         string $cacheKeyPrefix,
     ): void {
-        $definition = $container->getDefinition(PlatformParameterProvider::class);
+        $definition = $container->getDefinition(PlatformParameterProviderInterface::class);
         $definition->setArgument('$cache', new Reference($cacheAdapter));
         $definition->setArgument('$entityClass', $entityClass);
         $definition->setArgument('$cacheTtl', $cacheTtl);
         $definition->setArgument('$cacheKeyPrefix', $cacheKeyPrefix);
+    }
+
+    /**
+     * Configure PlatformParameterWriter with entity class.
+     */
+    private function configurePlatformParameterWriter(
+        ContainerBuilder $container,
+        string $entityClass,
+    ): void {
+        $definition = $container->getDefinition(PlatformParameterWriterInterface::class);
+        $definition->setArgument('$entityClass', $entityClass);
     }
 
     /**

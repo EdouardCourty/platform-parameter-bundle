@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Ecourty\PlatformParameterBundle\Command;
 
-use Doctrine\ORM\EntityManagerInterface;
-use Ecourty\PlatformParameterBundle\Contract\PlatformParameterProviderInterface;
-use Ecourty\PlatformParameterBundle\Model\AbstractPlatformParameter;
+use Ecourty\PlatformParameterBundle\Contract\PlatformParameterWriterInterface;
+use Ecourty\PlatformParameterBundle\Exception\ParameterNotFoundException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -21,13 +20,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class DeleteCommand extends Command
 {
-    /**
-     * @param class-string $entityClass
-     */
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly PlatformParameterProviderInterface $provider,
-        private readonly string $entityClass,
+        private readonly PlatformParameterWriterInterface $writer,
     ) {
         parent::__construct();
     }
@@ -46,42 +40,25 @@ final class DeleteCommand extends Command
         /** @var string $key */
         $key = $input->getArgument('key');
 
-        $repository = $this->entityManager->getRepository($this->entityClass);
-        $parameter = $repository->findOneBy(['key' => $key]);
+        try {
+            // Confirm deletion
+            if (!$input->getOption('force') && $input->isInteractive()) {
+                if (!$io->confirm(\sprintf('Are you sure you want to delete parameter "%s"?', $key), false)) {
+                    $io->info('Deletion cancelled.');
 
-        if (null === $parameter) {
-            $io->error(\sprintf('Parameter "%s" not found.', $key));
+                    return Command::SUCCESS;
+                }
+            }
+
+            $this->writer->delete($key);
+
+            $io->success(\sprintf('Parameter "%s" deleted successfully.', $key));
+
+            return Command::SUCCESS;
+        } catch (ParameterNotFoundException $e) {
+            $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
-
-        \assert($parameter instanceof AbstractPlatformParameter);
-
-        // Display parameter details
-        $io->section('Parameter to delete:');
-        $io->definitionList(
-            ['Key' => $parameter->getKey()],
-            ['Value' => $parameter->getValue()],
-            ['Type' => $parameter->getType()->value],
-            ['Label' => $parameter->getLabel()],
-        );
-
-        // Confirm deletion
-        if (!$input->getOption('force') && $input->isInteractive()) {
-            if (!$io->confirm('Are you sure you want to delete this parameter?', false)) {
-                $io->info('Deletion cancelled.');
-
-                return Command::SUCCESS;
-            }
-        }
-
-        $this->entityManager->remove($parameter);
-        $this->entityManager->flush();
-
-        $this->provider->clearCache($key);
-
-        $io->success(\sprintf('Parameter "%s" deleted successfully.', $key));
-
-        return Command::SUCCESS;
     }
 }
