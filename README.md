@@ -18,6 +18,7 @@ A Symfony bundle for managing global platform parameters with type-safe access a
   - [Available Methods](#available-methods)
   - [Cache Management](#cache-management)
   - [Parameter Types](#parameter-types)
+  - [Updating Parameters](#updating-parameters)
   - [Creating Parameters](#creating-parameters)
   - [Error Handling](#error-handling)
   - [CLI Commands](#cli-commands)
@@ -37,9 +38,11 @@ A Symfony bundle for managing global platform parameters with type-safe access a
 ## Features
 
 - 🎯 **Type-safe parameter access** - Methods for STRING, INTEGER, BOOLEAN, JSON, LIST, FLOAT, and DATETIME types
+- ✍️ **Type-safe parameter updates** - Writer service for updating values from code with validation
 - ⚡ **PSR-6 caching** - Built-in cache support for optimal performance
 - 🔧 **Easy integration** - Simple Symfony bundle with autowiring support
 - 📦 **Doctrine ORM** - Entity-based storage
+- 🎪 **Event system** - React to parameter changes with Symfony events
 
 ## Installation
 
@@ -415,26 +418,96 @@ The bundle supports 7 parameter types:
 | `FLOAT`    | Decimal number               | `19.99`, `-15.5`, `1.5e-3`          |
 | `DATETIME` | Date/time value              | `2026-01-21`, `2026-01-21 15:30:00` |
 
+### Updating Parameters
+
+The bundle provides a **PlatformParameterWriter** service for updating parameter values from your code with type safety:
+
+```php
+use Ecourty\PlatformParameterBundle\Contract\PlatformParameterWriterInterface;
+
+class MyService
+{
+    public function __construct(
+        private readonly PlatformParameterWriterInterface $parameterWriter
+    ) {
+    }
+
+    public function updateConfiguration(): void
+    {
+        // Update parameters with type-safe methods
+        $this->parameterWriter->setString('site_name', 'New Site Name');
+        $this->parameterWriter->setInt('max_uploads', 100);
+        $this->parameterWriter->setBool('maintenance_mode', true);
+        $this->parameterWriter->setJson('api_config', ['timeout' => 60]);
+        $this->parameterWriter->setList('allowed_ips', ['192.168.1.1', '10.0.0.1']);
+        $this->parameterWriter->setFloat('tax_rate', 19.5);
+        $this->parameterWriter->setDateTime('last_sync', new \DateTimeImmutable());
+        
+        // Delete a parameter
+        $this->parameterWriter->delete('old_parameter');
+        
+        // ✅ Cache is automatically cleared
+        // ✅ Events are automatically dispatched
+    }
+}
+```
+
+**Writer Methods:**
+
+```php
+setString(string $key, string $value): void
+setInt(string $key, int $value): void
+setBool(string $key, bool $value): void
+setJson(string $key, array $value): void
+setList(string $key, array $value, string $separator = "\n"): void
+setFloat(string $key, float $value): void
+setDateTime(string $key, \DateTimeImmutable $value, ?string $format = null): void
+delete(string $key): void
+```
+
+**Important Notes:**
+
+- The Writer **only updates existing parameters** - it does not create new ones
+- Type validation: throws `ParameterTypeMismatchException` if you try to set a value with the wrong type (e.g., `setInt()` on a STRING parameter)
+- Throws `ParameterNotFoundException` if the parameter doesn't exist
+
+**Why no auto-creation?** If you use a custom entity extending `AbstractPlatformParameter` with additional required fields (category, icon, etc.), the Writer doesn't know how to populate them. Parameter creation must be explicit.
+
 ### Creating Parameters
 
-Parameters are stored as Doctrine entities. You can create them programmatically:
+**Parameters must be created using Doctrine entities directly:**
 
 ```php
 use Ecourty\PlatformParameterBundle\Entity\PlatformParameter;
 use Ecourty\PlatformParameterBundle\Enum\ParameterType;
+use Doctrine\ORM\EntityManagerInterface;
 
-$parameter = new PlatformParameter();
-$parameter->setKey('site_name');
-$parameter->setValue('My Awesome Site');
-$parameter->setType(ParameterType::STRING);
-$parameter->setLabel('Site Name');
-$parameter->setDescription('The name of the website');
+class ParameterSeeder
+{
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager
+    ) {
+    }
 
-$entityManager->persist($parameter);
-$entityManager->flush();
+    public function createParameter(): void
+    {
+        $parameter = new PlatformParameter();
+        $parameter->setKey('site_name');
+        $parameter->setValue('My Awesome Site');
+        $parameter->setType(ParameterType::STRING);
+        $parameter->setLabel('Site Name');
+        $parameter->setDescription('The name of the website');
 
-// ✅ Cache is automatically cleared (if clear_cache_on_parameter_update is enabled, which is the default)
+        $this->entityManager->persist($parameter);
+        $this->entityManager->flush();
+    }
+}
 ```
+
+**This is the only way to create parameters.** It ensures:
+- All required fields are populated (key, value, type, label)
+- Custom entity fields are properly initialized
+- You have full control over parameter metadata
 
 ### Error Handling
 
@@ -473,26 +546,21 @@ php bin/console platform-parameter:get site_name
 
 Shows all metadata for a parameter including ID, key, value, type, label, description, and timestamps.
 
-#### Create or update a parameter
+#### Update a parameter value
 
 ```bash
-# Update existing parameter (only changes the value)
+# Update an existing parameter
 php bin/console platform-parameter:set max_uploads 50
-
-# Create new parameter (interactive mode - asks for type, label, description)
-php bin/console platform-parameter:set new_param "value"
-
-# Create new parameter (non-interactive mode)
-php bin/console platform-parameter:set api_timeout 30 --type=integer --label="API Timeout" --description="Timeout in seconds" --no-interaction
+php bin/console platform-parameter:set site_name "New Site Name"
+php bin/console platform-parameter:set maintenance_mode true
 ```
 
-**Interactive mode** (default):
-- If the parameter exists: updates only the value
-- If the parameter doesn't exist: prompts for type, label, and optional description
+**Behavior:**
+- Updates the value of an existing parameter
+- Automatically detects parameter type and converts value accordingly
+- Returns error if parameter doesn't exist
 
-**Non-interactive mode** (`--no-interaction`):
-- Requires `--type` and `--label` options when creating a new parameter
-- `--description` is optional
+**Note:** This command **only updates existing parameters**. To create new parameters, use Doctrine entities directly (see "Creating Parameters" section).
 
 #### Delete a parameter
 
@@ -504,7 +572,7 @@ php bin/console platform-parameter:delete old_param
 php bin/console platform-parameter:delete old_param --force
 ```
 
-Shows parameter details before deletion and asks for confirmation (unless `--force` is used).
+Asks for confirmation before deletion (unless `--force` is used).
 
 #### Clear parameter cache
 
