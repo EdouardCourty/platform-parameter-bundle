@@ -213,9 +213,6 @@ public function updateParameter(): void
     
     // Delete a parameter
     $this->writer->delete('old_parameter');
-    
-    // ✅ Cache is automatically cleared
-    // ✅ Events are automatically dispatched
 }
 ```
 
@@ -238,9 +235,6 @@ $parameter->setDescription('Maximum number of files per upload');
 
 $em->persist($parameter);
 $em->flush();
-
-// ✅ Cache is automatically cleared (if clear_cache_on_parameter_update is enabled, which is the default)
-// ✅ Events are automatically dispatched via Doctrine listener
 ```
 
 **By default**, cache is automatically cleared via a Doctrine listener when parameters are created, updated, or deleted. You can disable this behavior by setting `clear_cache_on_parameter_update: false` in configuration if you prefer manual cache management.

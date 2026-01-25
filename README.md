@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/EdouardCourty/platform-parameter-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/EdouardCourty/platform-parameter-bundle/actions/workflows/ci.yml)
 
-A Symfony bundle for managing global platform parameters with type-safe access and caching.
+A Symfony bundle for managing global platform parameters with type-safe access and caching.  
+Supports PHP 8.3+, Symfony 7.x and 8.x.
 
 ## Table of Contents
 
@@ -33,16 +34,18 @@ A Symfony bundle for managing global platform parameters with type-safe access a
   - [Running Tests](#running-tests)
   - [Code Quality](#code-quality)
 - [License](#license)
-- [Author](#author)
 
 ## Features
 
 - 🎯 **Type-safe parameter access** - Methods for STRING, INTEGER, BOOLEAN, JSON, LIST, FLOAT, and DATETIME types
 - ✍️ **Type-safe parameter updates** - Writer service for updating values from code with validation
 - ⚡ **PSR-6 caching** - Built-in cache support for optimal performance
-- 🔧 **Easy integration** - Simple Symfony bundle with autowiring support
+- 🔧 **Easy integration** - Simple Symfony bundle with simple configuration
 - 📦 **Doctrine ORM** - Entity-based storage
 - 🎪 **Event system** - React to parameter changes with Symfony events
+- 🛠️ **CLI commands** - Manage parameters from the command line
+- 🧩 **EasyAdmin support** - Optional CRUD controller for EasyAdmin integration
+- 🧱 **Extensible entity** - Create custom entities with additional fields
 
 ## Installation
 
@@ -445,9 +448,6 @@ class MyService
         
         // Delete a parameter
         $this->parameterWriter->delete('old_parameter');
-        
-        // ✅ Cache is automatically cleared
-        // ✅ Events are automatically dispatched
     }
 }
 ```
