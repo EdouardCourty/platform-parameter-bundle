@@ -20,7 +20,7 @@ return static function (ContainerConfigurator $container): void {
         ->autoconfigure();
 
     $services->load('Ecourty\\PlatformParameterBundle\\', '../../*')
-        ->exclude('../../{Controller,Entity,Enum,Exception,EventListener,Resources}');
+        ->exclude('../../{Controller,Entity,Enum,Exception,EventListener,Resources,Twig}');
 
     $services->set(PlatformParameterProviderInterface::class, PlatformParameterProvider::class)
         ->public();

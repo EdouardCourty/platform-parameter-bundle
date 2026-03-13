@@ -85,6 +85,11 @@ final class PlatformParameterExtension extends Extension implements PrependExten
 
         // Always register the listener (for events), pass clearCacheOnUpdate flag
         $this->registerParameterListener($container, $cacheKeyPrefix, $resolvedCacheAdapter, $clearCacheOnUpdate);
+
+        // Conditionally register Twig extension if Twig is installed
+        if (\class_exists(\Twig\Extension\AbstractExtension::class)) {
+            $loader->load('services_twig.php');
+        }
     }
 
     /**
