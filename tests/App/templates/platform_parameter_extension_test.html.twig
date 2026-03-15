@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <p id="string">{{ platform_parameter_string('site_name') }}</p>
+    <p id="string_default">{{ platform_parameter_string('missing_string', 'default_string') }}</p>
+    <p id="string_missing">{{ platform_parameter_string('missing_string') }}</p>
+
+    <p id="int">{{ platform_parameter_int('max_uploads') }}</p>
+    <p id="int_default">{{ platform_parameter_int('missing_int', 99) }}</p>
+    <p id="int_missing">{{ platform_parameter_int('missing_int') }}</p>
+
+    <p id="bool_true">{{ platform_parameter_bool('feature_enabled') ? 'true' : 'false' }}</p>
+    <p id="bool_false">{{ platform_parameter_bool('feature_disabled') ? 'true' : 'false' }}</p>
+    <p id="bool_default">{{ platform_parameter_bool('missing_bool', false) ? 'true' : 'false' }}</p>
+    <p id="bool_missing">{{ platform_parameter_bool('missing_bool') is null ? 'null' : 'not_null' }}</p>
+
+    <p id="float">{{ platform_parameter_float('rate') }}</p>
+    <p id="float_default">{{ platform_parameter_float('missing_float', 1.5) }}</p>
+    <p id="float_missing">{{ platform_parameter_float('missing_float') }}</p>
+
+    <ul id="list">
+        {% for item in platform_parameter_list('emails') %}
+            <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    <p id="list_default">{{ platform_parameter_list('missing_list', ['a', 'b'])|join(',') }}</p>
+    <p id="list_missing">{{ platform_parameter_list('missing_list') is null ? 'null' : 'not_null' }}</p>
+
+    <p id="json">{{ platform_parameter_json('config')['key'] }}</p>
+    <p id="json_default">{{ platform_parameter_json('missing_json', {'x': 'y'})['x'] }}</p>
+    <p id="json_missing">{{ platform_parameter_json('missing_json') is null ? 'null' : 'not_null' }}</p>
+
+    <p id="datetime">{{ platform_parameter_datetime('last_sync')|date('Y-m-d') }}</p>
+    <p id="datetime_missing">{{ platform_parameter_datetime('missing_datetime') is null ? 'null' : 'not_null' }}</p>
+</body>
+</html>
