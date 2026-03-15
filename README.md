@@ -24,6 +24,7 @@ Supports PHP 8.3+, Symfony 7.x and 8.x.
   - [Error Handling](#error-handling)
   - [CLI Commands](#cli-commands)
   - [EasyAdmin CRUD Interface](#easyadmin-crud-interface)
+  - [Twig Integration](#twig-integration)
 - [Extending the Entity](#extending-the-entity)
   - [Step 1: Create Your Custom Entity](#step-1-create-your-custom-entity)
   - [Step 2: Configure the Bundle](#step-2-configure-the-bundle)
@@ -45,6 +46,7 @@ Supports PHP 8.3+, Symfony 7.x and 8.x.
 - 🎪 **Event system** - React to parameter changes with Symfony events
 - 🛠️ **CLI commands** - Manage parameters from the command line
 - 🧩 **EasyAdmin support** - Optional CRUD controller for EasyAdmin integration
+- 🌿 **Twig integration** - Optional Twig functions for direct use in templates
 - 🧱 **Extensible entity** - Create custom entities with additional fields
 
 ## Installation
@@ -639,6 +641,46 @@ Then reference your custom controller in the dashboard instead:
 ```php
 yield MenuItem::linkToCrud('Platform Parameters', 'fa fa-cog', PlatformParameter::class)
     ->setController(CustomPlatformParameterCrudController::class);
+```
+
+### Twig Integration
+
+If Twig is installed in your project, the bundle automatically registers a Twig extension providing functions to read parameters directly in templates. No additional configuration is needed.
+
+**Available Twig functions:**
+
+| Function                                            | Return type               |
+|-----------------------------------------------------|---------------------------|
+| `platform_parameter_string(key, default)`           | `string\|null`            |
+| `platform_parameter_int(key, default)`              | `int\|null`               |
+| `platform_parameter_bool(key, default)`             | `bool\|null`              |
+| `platform_parameter_float(key, default)`            | `float\|null`             |
+| `platform_parameter_json(key, default)`             | `array\|null`             |
+| `platform_parameter_list(key, default, separator)`  | `array\|null`             |
+| `platform_parameter_datetime(key, default, format)` | `DateTimeImmutable\|null` |
+
+All functions return `null` (instead of throwing an exception) when the parameter is not found and no default is provided.
+
+**Examples:**
+
+```twig
+{# Display a string parameter #}
+<h1>{{ platform_parameter_string('site_name', 'My App') }}</h1>
+
+{# Conditional rendering based on a boolean flag #}
+{% if platform_parameter_bool('maintenance_mode', false) %}
+    <div class="alert">The site is under maintenance.</div>
+{% endif %}
+
+{# Iterate over a list parameter #}
+<ul>
+{% for email in platform_parameter_list('beta_testers_emails', []) %}
+    <li>{{ email }}</li>
+{% endfor %}
+</ul>
+
+{# Display a formatted datetime #}
+<p>Last sync: {{ platform_parameter_datetime('last_sync')|date('Y-m-d H:i') }}</p>
 ```
 
 ## Extending the Entity
